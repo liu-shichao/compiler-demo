@@ -1,0 +1,4 @@
+fun @main(): i32 { // main 函数的定义
+%entry:             // 入口基本块
+	ret 0
+ }
