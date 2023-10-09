@@ -17,6 +17,8 @@ void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
 
 using namespace std;
 
+int idx = 0;
+
 %}
 
 // 定义 parser 函数和错误处理函数的附加参数
@@ -42,7 +44,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt
+%type <ast_val> FuncDef FuncType Block Stmt Exp UnaryExp PrimaryExp UnaryOp
 %type <int_val> Number
 
 %%
@@ -82,9 +84,73 @@ Block
   ;
 
 Stmt
-  : RETURN Number ';' {
+  : RETURN Exp ';' {
     auto ast = new StmtAST();
-    ast->number = $2;
+    ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+Exp
+  : UnaryExp {
+      auto ast = new ExpAST();
+      ast->unary_exp = unique_ptr<BaseAST>($1);
+      $$ = ast;
+  }
+  ;
+
+UnaryExp
+  : PrimaryExp {
+      // std::cout << "(PrimaryExp): " << *(yylval.str_val) << std::endl;
+      auto ast = new UnaryExpAST();
+      ast->primary_exp = unique_ptr<BaseAST>($1);
+      ast->type = UnaryExpAST::UnaryExpType::PRIMARY_EXP;
+      $$ = ast;
+  }
+  | UnaryOp UnaryExp {
+      // std::cout << "UnaryOp UnaryExp: " << *(yylval.str_val) << std::endl;
+      auto ast = new UnaryExpAST();
+      ast->type = UnaryExpAST::UnaryExpType::UNARYOP_UNARYEXP;
+      ast->unary_op = unique_ptr<BaseAST>($1);
+      ast->unary_exp = unique_ptr<BaseAST>($2);
+      $$ = ast;
+  }
+  ;
+
+PrimaryExp
+  : '('Exp')' {
+    // std::cout << "(Exp): " << *(yylval.str_val) << std::endl;
+    auto ast = new PrimaryExpAST();
+    ast->idx = ++idx;
+    ast->type = PrimaryExpAST::PrimaryExpType::EXP;
+    ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | Number {
+    auto ast = new PrimaryExpAST();
+    ast->type = PrimaryExpAST::PrimaryExpType::NUMBER;
+    ast->number = $1;
+    $$ = ast;
+  }
+  ;
+
+UnaryOp
+  : '+' {
+    // std::cout << "+: " << *(yylval.str_val) << std::endl;
+    auto ast = new UnaryOpAST();
+    ast->type = UnaryOpAST::UnaryOpType::ADD;
+    $$ = ast;
+  }
+  | '-' {
+    // std::cout << "-: " << *(yylval.str_val) << std::endl;
+    auto ast = new UnaryOpAST();
+    ast->type = UnaryOpAST::UnaryOpType::MINUS;
+    $$ = ast;
+  }
+  | '!' {
+    // std::cout << "!: " << *(yylval.str_val) << std::endl;
+    auto ast = new UnaryOpAST();
+    ast->type = UnaryOpAST::UnaryOpType::NEGATION;
     $$ = ast;
   }
   ;
