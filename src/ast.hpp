@@ -163,12 +163,23 @@ class UnaryExpAST : public BaseAST {
         if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::ADD) {
           ret += unary_exp->Dump();
         } else if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::MINUS) {
-          ret += unary_exp->Dump(); 
-          ret += "\n";       
+          if (unary_exp->Value() == -1) {
+
+          } else {
+            ret += unary_exp->Dump(); 
+            ret += "\n";       
+          }
+
           ret += "\t";  
           ret += "%" + std::to_string(Value()) + " = ";
-          ret += "sub 0, %";
-          ret += std::to_string(unary_exp->Value());
+
+          if (unary_exp->Value() == -1) {
+            ret += "sub 0, ";
+            ret += unary_exp->Dump();
+          } else {
+            ret += "sub 0, %";
+            ret += std::to_string(unary_exp->Value());
+          }
         } else if (((UnaryOpAST*)(unary_op.get()))->type== UnaryOpAST::UnaryOpType::NEGATION) {
           if (unary_exp->Value() == -1) {
           } else {
