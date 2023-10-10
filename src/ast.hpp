@@ -49,6 +49,7 @@ class FuncTypeAST : public BaseAST {
  public:
   std::string type;
   std::string Dump() const override {
+    std::cout << type << std::endl;
     return type;
   }
 };
@@ -58,7 +59,6 @@ class BlockAST : public BaseAST {
   std::unique_ptr<BaseAST> stmt;
   std::string Dump() const override {
     std::string ret = "%entry:             // 入口基本块\n";
-    ret += "\t";
     ret += stmt->Dump();
     return ret;
   }
@@ -69,10 +69,15 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> exp;
   std::string Dump() const override {
     std::string ret;
-    ret += exp->Dump();
-    ret += '\n';
-    ret += "\tret $";
-    ret += exp->Value();
+    if (exp->Value() == -1) {
+      ret += "\tret ";
+      ret += exp->Dump();
+    } else {
+      ret += exp->Dump();
+      ret += '\n';
+      ret += "\tret %";
+      ret += std::to_string(exp->Value());
+    }
     ret += '\n';
     return ret;
   }
@@ -125,7 +130,7 @@ class PrimaryExpAST : public BaseAST {
     std::string Dump() const override {
       std::string ret;
       if (type == PrimaryExpType::EXP) {
-        ret += "$" + std::to_string(idx) + exp->Dump();
+        ret += exp->Dump();
       } else if (type == PrimaryExpType::NUMBER) {
         ret += std::to_string(number);
       }
@@ -133,9 +138,9 @@ class PrimaryExpAST : public BaseAST {
     }
     int Value() const override {
       if (type == PrimaryExpType::EXP) {
-        return exp->Value() + 1;
+        return exp->Value();
       } else if (type == PrimaryExpType::NUMBER) {
-        return 1;
+        return -1;
       }
     }
 };
@@ -147,34 +152,39 @@ class UnaryExpAST : public BaseAST {
       UNARYOP_UNARYEXP
     };
     UnaryExpType type;
-    int idx;
     std::unique_ptr<BaseAST> primary_exp;
     std::unique_ptr<BaseAST> unary_op;
     std::unique_ptr<BaseAST> unary_exp;
     std::string Dump() const override {
       std::string ret;
       if (type == UnaryExpType::PRIMARY_EXP) {
-        if (((PrimaryExpAST*)(primary_exp.get()))->type == PrimaryExpAST::PrimaryExpType::EXP) {
-          ret += "$" + std::to_string(primary_exp->Value());
-        } else {
-          ret += primary_exp->Dump();
-        }
+        ret += primary_exp->Dump();
       } else if (type == UnaryExpType::UNARYOP_UNARYEXP) {
         if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::ADD) {
           ret += unary_exp->Dump();
         } else if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::MINUS) {
-          ret += unary_exp->Dump();          
-          ret += "$" + std::to_string(idx) + " = ";
-          ret += "sub 0, $";
+          ret += unary_exp->Dump(); 
+          ret += "\n";       
+          ret += "\t";  
+          ret += "%" + std::to_string(Value()) + " = ";
+          ret += "sub 0, %";
           ret += std::to_string(unary_exp->Value());
-          ret += "\n";
         } else if (((UnaryOpAST*)(unary_op.get()))->type== UnaryOpAST::UnaryOpType::NEGATION) {
-          ret += unary_exp->Dump();
-          ret += "$" + std::to_string(idx) + " = ";
-          ret += "eq $";
-          ret += std::to_string(unary_exp->Value());
+          if (unary_exp->Value() == -1) {
+          } else {
+            ret += unary_exp->Dump();
+            ret += "\n";
+          }
+          ret += "\t";
+          ret += "%" + std::to_string(Value()) + " = ";
+          if (unary_exp->Value() == -1) {
+            ret += "eq ";
+            ret += unary_exp->Dump();
+          } else {
+            ret += "eq %";
+            ret += std::to_string(unary_exp->Value());
+          }
           ret += ", 0";
-          ret += "\n";
         }
       }
       return ret;
@@ -183,7 +193,10 @@ class UnaryExpAST : public BaseAST {
       if (type == UnaryExpType::PRIMARY_EXP) {
         return primary_exp->Value();
       } else if (type == UnaryExpType::UNARYOP_UNARYEXP) {
-        return unary_exp->Value();
+        if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::ADD) {
+          return unary_exp->Value();
+        }
+        return unary_exp->Value() + 1;
       }
     }
 };
