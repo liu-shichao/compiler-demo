@@ -8,6 +8,7 @@ std::string Visit(const koopa_raw_function_t &func);
 std::string Visit(const koopa_raw_basic_block_t &bb);
 std::string Visit(const koopa_raw_value_t &value);
 std::string Visit(const koopa_raw_program_t &program);
+std::string Visit(const koopa_raw_binary_t& binary);
 std::string convert_to_asm(std::string ir);
 void free_koopa_program();
 

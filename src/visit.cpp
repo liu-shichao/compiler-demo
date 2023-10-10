@@ -11,9 +11,12 @@ std::string Visit(const koopa_raw_program_t &program) {
   // 执行一些其他的必要操作
   // ...
   // 访问所有全局变量
+  std::cout << "------------2-------------" << std::endl;
   ret += Visit(program.values);
+  std::cout << "-------------3------------" << std::endl;
   // 访问所有函数
   ret += Visit(program.funcs);
+  std::cout << "-------------4------------" << std::endl;
   return ret;
 }
 
@@ -92,6 +95,30 @@ std::string Visit(const koopa_raw_integer_t &integer) {
   std::cout << integer.value << std::endl;
   return std::to_string(integer.value);
 }
+
+int idx_t = -1;
+
+std::string Visit(const koopa_raw_binary_t& binary) {
+  std::string ret;
+  std::cout << "Visit koopa_raw_binary_t" << std::endl;
+  if (binary.op == KOOPA_RBO_EQ) {
+    std::cout << "KOOPA_RBO_EQ: " << std::endl;
+    int cur_idx_t = idx_t + 1;
+    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
+    ret += "li  " + str_cur_idx_t;
+    std::string target_str;
+    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
+        target_str = "t" + std::to_string(idx_t);
+    } else {
+        target_str = binary.rhs->kind.data.integer.value;
+    }
+    ret += ", " + target_str;
+    ret += "xor " + str_cur_idx_t + ", " + str_cur_idx_t + ", x0";
+    ret += "seqz " + str_cur_idx_t + ", " + str_cur_idx_t;
+    // 增加全局使用的寄存器编号
+    idx_t ++;
+  }
+}
 // 访问指令
 std::string Visit(const koopa_raw_value_t &value) {
   std::string ret;
@@ -108,9 +135,20 @@ std::string Visit(const koopa_raw_value_t &value) {
       std::cout << "KOOPA_RVT_INTEGER" << std::endl;
       ret = Visit(kind.data.integer);
       break;
+    case KOOPA_RVT_BINARY:
+      // 访问 integer 指令
+      std::cout << "KOOPA_RVT_BINARY "
+      << ", kind.op: " << kind.data.binary.op
+      << ", kind.lhs: " << kind.data.binary.lhs->kind.data.integer.value
+      << ", lhs.tag: " << kind.data.binary.lhs->kind.tag
+      << ", kind.rhs: " << kind.data.binary.rhs->kind.data.integer.value
+      << ", rhs.tag: " << kind.data.binary.rhs->kind.tag << std::endl;
+      ret = Visit(kind.data.binary);
+      break;
+      
     default:
       // 其他类型暂时遇不到
-      std::cout << "default" << std::endl;
+      std::cout << "untreated type: " << kind.tag << std::endl;
       assert(false);
   }
   return ret;
