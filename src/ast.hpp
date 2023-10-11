@@ -212,6 +212,63 @@ class UnaryExpAST : public BaseAST {
     }
 };
 
+class MulExpAST : public BaseAST {
+  public:
+    enum class MultExpType {
+      UNARYEXP,
+      MULEXP_MULT_UNARYEXP,
+      MULEXP_DIV_UNARYEXP,
+      MULEXP_MOD_UNARYEXP
+    };
+    MulExpAST type;
+    std::unique_ptr<BaseAST> unaryexp;
+    std::unique_ptr<BaseAST> mulexp;
+
+    std::string Dump() const override() {
+
+    }
+};
+
+class AddExpAST : public BaseAST {
+  public:
+    enum class AddExpType {
+      MULEXP,
+      ADDEXP_ADD_MULEXP,
+      ADDEXP_MINUS_MULEXP
+    };
+    AddExpType type;
+    std::unique_ptr<BaseAST> mulexp;
+    std::unique_ptr<BaseAST> addexp;
+    
+    std::string Dump() const override() {
+      std::string ret;
+      if (type == MULEXP) {
+        ret += mulexp->Dump();
+      } else if (type == ADDEXP_ADD_MULEXP) {
+        ret += addexp->Dump();
+        ret += '\n';
+        ret += mulexp->Dump();
+        ret += '\n';
+        ret += Value();
+        ret += " = add ";
+        ret += addexp->Value();
+        ret += ", ";
+        ret += mulexp->Value();
+      } else if (type == ADDEXP_MINUS_MULEXP) {
+        ret += addexp->Dump();
+        ret += '\n';
+        ret += mulexp->Dump();
+        ret += '\n';
+        ret += Value();
+        ret += " = sub ";
+        ret += addexp->Value();
+        ret += ", ";
+        ret += mulexp->Value();
+      }
+      return ret;
+    }
+};
+
 
 // ...
 #endif
