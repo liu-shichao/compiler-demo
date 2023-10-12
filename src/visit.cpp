@@ -108,7 +108,7 @@ std::string Visit(const koopa_raw_binary_t& binary) {
     int cur_idx_t = idx_t + 1;
     std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
     
-    std::string target_str;
+    std::string l_target_str, target_str;
     if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
         target_str = "t" + std::to_string(idx_t);
         ret += "\tmv  " + str_cur_idx_t;
@@ -122,10 +122,10 @@ std::string Visit(const koopa_raw_binary_t& binary) {
     // 增加全局使用的寄存器编号
     idx_t ++;
   } else if (binary.op == KOOPA_RBO_SUB) {
-    std::cout << "KOOPA_RBO_EQ: " << std::endl;
+    std::cout << "KOOPA_RBO_SUB: " << std::endl;
     int cur_idx_t = idx_t + 1;
     std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::string target_str;
+    std::string l_target_str, target_str;
     std::cout << "............" << std::endl;
     std::cout << binary.rhs->kind.tag << std::endl;
     if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
@@ -137,7 +137,64 @@ std::string Visit(const koopa_raw_binary_t& binary) {
     // 增加全局使用的寄存器编号
     idx_t ++;
   } else if (binary.op == KOOPA_RBO_ADD) {
-    std::cout << "KOOPA_RBO_EQ: " << std::endl;
+    std::cout << "KOOPA_RBO_ADD: " << std::endl;
+    std::string l_target_str, target_str;
+    
+    int origin_idx_t = idx_t;
+    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
+        l_target_str = "t" + std::to_string(origin_idx_t);
+    } else {
+        idx_t ++;
+        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
+        ret += "\tli t" + std::to_string(idx_t) + ", " + l_target_str + "\n";
+        l_target_str = "t" + std::to_string(idx_t);
+    }
+    
+    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
+        target_str = "t" + std::to_string(origin_idx_t);
+    } else {
+        idx_t ++;
+        target_str = std::to_string(binary.rhs->kind.data.integer.value);
+        ret += "\tli t" + std::to_string(idx_t) + ", " + target_str + "\n";
+        target_str = "t" + std::to_string(idx_t);
+    }
+    int cur_idx_t = idx_t;
+    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
+    std::cout << "............" << std::endl;
+    std::cout << binary.lhs->kind.tag << std::endl;
+    std::cout << binary.rhs->kind.tag << std::endl;
+
+    ret += "\tadd " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
+  } else if (binary.op == KOOPA_RBO_MUL) {
+    std::cout << "KOOPA_RBO_MUL: " << std::endl;
+    std::string l_target_str, target_str;
+    
+    int origin_idx_t = idx_t;
+    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
+        l_target_str = "t" + std::to_string(origin_idx_t);
+    } else {
+        idx_t ++;
+        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
+        ret += "\tli t" + std::to_string(idx_t) + ", " + l_target_str + "\n";
+        l_target_str = "t" + std::to_string(idx_t);
+    }
+    
+    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
+        target_str = "t" + std::to_string(origin_idx_t);
+    } else {
+        idx_t ++;
+        target_str = std::to_string(binary.rhs->kind.data.integer.value);
+        ret += "\tli t" + std::to_string(idx_t) + ", " + target_str + "\n";
+        target_str = "t" + std::to_string(idx_t);
+    }
+    int cur_idx_t = idx_t;
+    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
+    std::cout << "............" << std::endl;
+    std::cout << binary.lhs->kind.tag << std::endl;
+    std::cout << binary.rhs->kind.tag << std::endl;
+
+    ret += "\tmul " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
+    // 增加全局使用的寄存器编号
   }
   std::cout << "endl." << std::endl;
 

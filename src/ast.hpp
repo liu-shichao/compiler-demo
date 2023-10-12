@@ -302,9 +302,7 @@ class AddExpAST : public BaseAST {
     int Value() const override {
       if (type == AddExpType::MULEXP) {
         return mulexp->Value();
-      } else if (type == AddExpType::ADDEXP_ADD_MULEXP) {
-        return std::max(addexp->Value(), mulexp->Value()) + 1;
-      } else if (type == AddExpType::ADDEXP_MINUS_MULEXP) {
+      } else {
         return std::max(addexp->Value(), mulexp->Value()) + 1;
       }
     }
