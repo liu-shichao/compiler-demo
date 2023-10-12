@@ -268,7 +268,7 @@ class MulExpAST : public BaseAST {
       if (type == MultExpType::UNARYEXP) {
         return unaryexp->Value();
       } else {
-        return unaryexp->Value() + 1;
+        return std::max(unaryexp->Value(), mulexp->Value()) + 1;
       } 
     }
     std::string Dump() const override {
