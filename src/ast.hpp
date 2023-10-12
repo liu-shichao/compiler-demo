@@ -8,9 +8,40 @@ class UnaryOpAST;
 // 所有 AST 的基类
 class BaseAST {
  public:
+  virtual bool IsValue() const {return false;};
   virtual ~BaseAST() = default;
   virtual std::string Dump() const = 0;
   virtual int Value() const {return 0;};
+  std::string GetChildExp(const std::unique_ptr<BaseAST>& child) const {
+    std::string ret;
+    if (!child->IsValue()) {
+      ret += child->Dump();
+      ret += "\n";
+    }
+    return ret;
+  }
+  std::string GetChildValue(const std::unique_ptr<BaseAST>& child) const {
+    std::string ret;
+    if (child->IsValue()) {
+      ret += child->Dump();
+    } else {
+      ret += "%" + std::to_string(child->Value());
+    }
+    return ret;
+  }
+  std::string DumpBinaryExp(std::string op_str,
+                        const std::unique_ptr<BaseAST>& left,
+                        const std::unique_ptr<BaseAST>& right) const {
+    std::string ret;
+    ret += GetChildExp(left);
+    ret += GetChildExp(right);
+    ret += "\t%" + std::to_string(Value());
+    ret += " = " + op_str + " ";
+    ret += GetChildValue(left);
+    ret += ", ";
+    ret += GetChildValue(right);
+    return ret;
+  }
 };
 
 // CompUnit 是 BaseAST
@@ -200,6 +231,9 @@ class UnaryExpAST : public BaseAST {
       }
       return ret;
     }
+    bool IsValue() const override {
+      return Value() == -1;
+    }
     int Value() const override {
       if (type == UnaryExpType::PRIMARY_EXP) {
         return primary_exp->Value();
@@ -220,12 +254,35 @@ class MulExpAST : public BaseAST {
       MULEXP_DIV_UNARYEXP,
       MULEXP_MOD_UNARYEXP
     };
-    MulExpAST type;
+    MultExpType type;
     std::unique_ptr<BaseAST> unaryexp;
     std::unique_ptr<BaseAST> mulexp;
-
-    std::string Dump() const override() {
-
+    bool IsValue() const override {
+      if (type == MultExpType::UNARYEXP) {
+        return unaryexp->IsValue();
+      } else {
+        return false; 
+      } 
+    }
+    int Value() const override {
+      if (type == MultExpType::UNARYEXP) {
+        return unaryexp->Value();
+      } else {
+        return unaryexp->Value() + 1;
+      } 
+    }
+    std::string Dump() const override {
+      std::string ret;
+      if (type == MultExpType::UNARYEXP) {
+        ret += unaryexp->Dump();
+      } else if (type == MultExpType::MULEXP_MULT_UNARYEXP) {
+        ret += DumpBinaryExp("mul", mulexp, unaryexp);
+      } else if (type == MultExpType::MULEXP_DIV_UNARYEXP) {
+        ret += DumpBinaryExp("div", mulexp, unaryexp);
+      } else if (type == MultExpType::MULEXP_MOD_UNARYEXP) {
+        ret += DumpBinaryExp("mod", mulexp, unaryexp);
+      } 
+      return ret;
     }
 };
 
@@ -239,31 +296,26 @@ class AddExpAST : public BaseAST {
     AddExpType type;
     std::unique_ptr<BaseAST> mulexp;
     std::unique_ptr<BaseAST> addexp;
-    
-    std::string Dump() const override() {
+    bool IsValue() const override {
+      return Value() == -1;
+    }
+    int Value() const override {
+      if (type == AddExpType::MULEXP) {
+        return mulexp->Value();
+      } else if (type == AddExpType::ADDEXP_ADD_MULEXP) {
+        return std::max(addexp->Value(), mulexp->Value()) + 1;
+      } else if (type == AddExpType::ADDEXP_MINUS_MULEXP) {
+        return std::max(addexp->Value(), mulexp->Value()) + 1;
+      }
+    }
+    std::string Dump() const override {
       std::string ret;
-      if (type == MULEXP) {
+      if (type == AddExpType::MULEXP) {
         ret += mulexp->Dump();
-      } else if (type == ADDEXP_ADD_MULEXP) {
-        ret += addexp->Dump();
-        ret += '\n';
-        ret += mulexp->Dump();
-        ret += '\n';
-        ret += Value();
-        ret += " = add ";
-        ret += addexp->Value();
-        ret += ", ";
-        ret += mulexp->Value();
-      } else if (type == ADDEXP_MINUS_MULEXP) {
-        ret += addexp->Dump();
-        ret += '\n';
-        ret += mulexp->Dump();
-        ret += '\n';
-        ret += Value();
-        ret += " = sub ";
-        ret += addexp->Value();
-        ret += ", ";
-        ret += mulexp->Value();
+      } else if (type == AddExpType::ADDEXP_ADD_MULEXP) {
+        ret += DumpBinaryExp("add", addexp, mulexp);
+      } else if (type == AddExpType::ADDEXP_MINUS_MULEXP) {
+        ret += DumpBinaryExp("sub", addexp, mulexp);
       }
       return ret;
     }

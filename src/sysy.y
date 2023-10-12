@@ -102,51 +102,51 @@ Exp
 AddExp
   : MulExp {
     auto ast = new AddExpAST();
-    ast->type = AddExpAST::AddExpType::UnaryExp;
-    ast->mulexp = unique_ptr<BaseAST($1);
+    ast->type = AddExpAST::AddExpType::MULEXP;
+    ast->mulexp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | AddExp '+' MulExp {
     auto ast = new AddExpAST();
     ast->type = AddExpAST::AddExpType::ADDEXP_ADD_MULEXP;
-    ast->addexp = unique_ptr<BaseAST($1);
-    ast->mulexp = unique_ptr<BaseAST($3);
+    ast->addexp = unique_ptr<BaseAST>($1);
+    ast->mulexp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   | AddExp '-' MulExp {
     auto ast = new AddExpAST();
     ast->type = AddExpAST::AddExpType::ADDEXP_MINUS_MULEXP;
-    ast->addexp = unique_ptr<BaseAST($1);
-    ast->mulexp = unique_ptr<BaseAST($3);
+    ast->addexp = unique_ptr<BaseAST>($1);
+    ast->mulexp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;
 MulExp
   : UnaryExp {
     auto ast = new MulExpAST();
-    ast->type = MulExpAST::MulExpType::UnaryExp;
-    ast->unaryexp = unique_ptr<BaseAST($1);
+    ast->type = MulExpAST::MultExpType::UNARYEXP;
+    ast->unaryexp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | MulExp '*' UnaryExp {
     auto ast = new MulExpAST();
-    ast->type = MulExpAST::MulExpType::MULEXP_MULT_UNARYEXP;
-    ast->mulexp = unique_ptr<BaseAST($1);
-    ast->unaryexp = unique_ptr<BaseAST($3);
+    ast->type = MulExpAST::MultExpType::MULEXP_MULT_UNARYEXP;
+    ast->mulexp = unique_ptr<BaseAST>($1);
+    ast->unaryexp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   | MulExp '/' UnaryExp {
     auto ast = new MulExpAST();
-    ast->type = MulExpAST::MulExpType::MULEXP_DIV_UNARYEXP;
-    ast->mulexp = unique_ptr<BaseAST($1);
-    ast->unaryexp = unique_ptr<BaseAST($3);
+    ast->type = MulExpAST::MultExpType::MULEXP_DIV_UNARYEXP;
+    ast->mulexp = unique_ptr<BaseAST>($1);
+    ast->unaryexp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   | MulExp '%' UnaryExp {
     auto ast = new MulExpAST();
-    ast->type = MulExpAST::MulExpType::MULEXP_MOD_UNARYEXP;
-    ast->mulexp = unique_ptr<BaseAST($1);
-    ast->unaryexp = unique_ptr<BaseAST($3);
+    ast->type = MulExpAST::MultExpType::MULEXP_MOD_UNARYEXP;
+    ast->mulexp = unique_ptr<BaseAST>($1);
+    ast->unaryexp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;
