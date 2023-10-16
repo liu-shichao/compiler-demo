@@ -388,7 +388,7 @@ class LAndExpAST : public BaseAST {
         
         value_idx = makeTempRegId();
         ret += "%" + std::to_string(value_idx) + " = ";
-        ret += " = and %" + std::to_string(v1);
+        ret += "and %" + std::to_string(v1);
         ret += ", " + std::to_string(v2);
 
       }
