@@ -108,8 +108,8 @@ LOrExp
   }
   | LOrExp OR LAndExp {
       auto ast = new LOrExpAST();
-      ast->landexp = unique_ptr<BaseAST>($1);
-      ast->lorexp = unique_ptr<BaseAST>($3);
+      ast->lorexp = unique_ptr<BaseAST>($1);
+      ast->landexp = unique_ptr<BaseAST>($3);
       ast->type = LOrExpAST::LOrExpType::LOREXP_OR_LANDEXP;
       $$ = ast;
   }

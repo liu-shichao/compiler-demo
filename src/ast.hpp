@@ -1,6 +1,7 @@
 #ifndef __AST_HPP__
 #define __AST_HPP__
 
+#include <memory>
 #include <iostream>
 
 class UnaryOpAST;
@@ -8,17 +9,24 @@ class UnaryOpAST;
 // 所有 AST 的基类
 class BaseAST {
  public:
-  virtual bool IsValue() const {
+  int value_idx = - 1000;
+
+  static int cur_tmp_reg_id;
+  virtual bool IsValue() {
     return Value() == -1;
   };
   virtual ~BaseAST() = default;
-  virtual std::string Dump() const = 0;
-  virtual int Value() const {return 0;};
+  virtual std::string Dump() = 0;
+  virtual int Value() {return value_idx;};
+  static int makeTempRegId() {
+    cur_tmp_reg_id ++;
+    return cur_tmp_reg_id;
+  }
   std::string GetChildExp(const std::unique_ptr<BaseAST>& child) const {
     std::string ret;
     if (!child->IsValue()) {
       ret += child->Dump();
-      ret += "\n";
+      ret += ret == "" ? "" : "\n";
     }
     return ret;
   }
@@ -31,12 +39,16 @@ class BaseAST {
     }
     return ret;
   }
+  virtual void calcValue() {
+    value_idx = makeTempRegId();
+  };
   std::string DumpBinaryExp(std::string op_str,
                         const std::unique_ptr<BaseAST>& left,
-                        const std::unique_ptr<BaseAST>& right) const {
+                        const std::unique_ptr<BaseAST>& right) {
     std::string ret;
     ret += GetChildExp(left);
     ret += GetChildExp(right);
+    calcValue();
     ret += "\t%" + std::to_string(Value());
     ret += " = " + op_str + " ";
     ret += GetChildValue(left);
@@ -51,7 +63,7 @@ class CompUnitAST : public BaseAST {
  public:
   // 用智能指针管理对象
   std::unique_ptr<BaseAST> func_def;
-  std::string Dump() const override {
+  std::string Dump() override {
     // std::cout << "CompUnitAST { ";
     std::string ret = func_def->Dump();
     return ret;
@@ -65,7 +77,7 @@ class FuncDefAST : public BaseAST {
   std::unique_ptr<BaseAST> func_type;
   std::string ident;
   std::unique_ptr<BaseAST> block;
-  std::string Dump() const override {
+  std::string Dump() override {
     std::string ret;
     ret = "fun @";
     ret += ident;
@@ -81,7 +93,7 @@ class FuncDefAST : public BaseAST {
 class FuncTypeAST : public BaseAST {
  public:
   std::string type;
-  std::string Dump() const override {
+  std::string Dump() override {
     std::cout << type << std::endl;
     return type;
   }
@@ -90,7 +102,7 @@ class FuncTypeAST : public BaseAST {
 class BlockAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> stmt;
-  std::string Dump() const override {
+  std::string Dump() override {
     std::string ret = "%entry:             // 入口基本块\n";
     ret += stmt->Dump();
     return ret;
@@ -100,7 +112,7 @@ class BlockAST : public BaseAST {
 class StmtAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
-  std::string Dump() const override {
+  std::string Dump() override {
     std::string ret;
     if (exp->Value() == -1) {
       ret += "\tret ";
@@ -119,12 +131,12 @@ class StmtAST : public BaseAST {
 class ExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> unary_exp;
-  std::string Dump() const override {
+  std::string Dump() override {
     std::string ret;
     ret += unary_exp->Dump();
     return ret;
   }
-  int Value() const override{
+  int Value() override{
     return unary_exp->Value();
   }
 };
@@ -137,7 +149,7 @@ class UnaryOpAST : public BaseAST {
       NEGATION
     };
     UnaryOpType type;
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == UnaryOpType::ADD) {
         ret += "+";
@@ -160,7 +172,7 @@ class PrimaryExpAST : public BaseAST {
     int idx;
     std::unique_ptr<BaseAST> exp;
     int number;
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == PrimaryExpType::EXP) {
         ret += exp->Dump();
@@ -169,7 +181,7 @@ class PrimaryExpAST : public BaseAST {
       }
       return ret;
     }
-    int Value() const override {
+    int Value() override {
       if (type == PrimaryExpType::EXP) {
         return exp->Value();
       } else if (type == PrimaryExpType::NUMBER) {
@@ -188,7 +200,7 @@ class UnaryExpAST : public BaseAST {
     std::unique_ptr<BaseAST> primary_exp;
     std::unique_ptr<BaseAST> unary_op;
     std::unique_ptr<BaseAST> unary_exp;
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == UnaryExpType::PRIMARY_EXP) {
         ret += primary_exp->Dump();
@@ -233,10 +245,10 @@ class UnaryExpAST : public BaseAST {
       }
       return ret;
     }
-    bool IsValue() const override {
+    bool IsValue() override {
       return Value() == -1;
     }
-    int Value() const override {
+    int Value() override {
       if (type == UnaryExpType::PRIMARY_EXP) {
         return primary_exp->Value();
       } else if (type == UnaryExpType::UNARYOP_UNARYEXP) {
@@ -266,14 +278,14 @@ class MulExpAST : public BaseAST {
     //     return false; 
     //   } 
     // }
-    int Value() const override {
+    int Value() override {
       if (type == MultExpType::UNARYEXP) {
         return unaryexp->Value();
       } else {
         return std::max(unaryexp->Value(), mulexp->Value()) + 1;
       } 
     }
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == MultExpType::UNARYEXP) {
         ret += unaryexp->Dump();
@@ -298,14 +310,14 @@ class AddExpAST : public BaseAST {
     AddExpType type;
     std::unique_ptr<BaseAST> mulexp;
     std::unique_ptr<BaseAST> addexp;
-    int Value() const override {
+    int Value() override {
       if (type == AddExpType::MULEXP) {
         return mulexp->Value();
       } else {
         return std::max(addexp->Value(), mulexp->Value()) + 1;
       }
     }
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == AddExpType::MULEXP) {
         ret += mulexp->Dump();
@@ -328,30 +340,40 @@ class LOrExpAST : public BaseAST {
     LOrExpType type;
     std::unique_ptr<BaseAST> landexp;
     std::unique_ptr<BaseAST> lorexp;
-    int Value() const override {
+
+    int Value() override {
       if (type == LOrExpType::LANDEXP) {
-        return landexp->Value();
-      } else {
-        return std::max(landexp->Value(), lorexp->Value()) + 2;
+        value_idx = landexp->Value();
       }
+      return value_idx;
     }
-    std::string Dump() const override {
+    // void calcValue() {
+    //   if (xxxxxx != -100) return;
+    //   if (type == LOrExpType::LANDEXP) {
+    //     xxxxxx = landexp->Value();
+    //   std::cout << "xxxxxxssssssssxxxxxxxxxxxxxxxxxxx" << std::endl;
+    //   } else {
+    //     xxxxxx = makeTempRegId();
+    //   std::cout << "xxxxxxxxxxxxxxxxxxxxxxxxx" << std::endl;
+    //   }
+    // }
+    std::string Dump() override {
       std::string ret;
       if (type == LOrExpType::LANDEXP) {
         ret += landexp->Dump();
       } else if (type == LOrExpType::LOREXP_OR_LANDEXP) {
         ret += GetChildExp(landexp);
         ret += GetChildExp(lorexp);
-        
-        int temp_value = std::max(landexp->Value(), lorexp->Value()) + 1;
-        ret += "\t%" + std::to_string(temp_value) + " = ";
+        value_idx = makeTempRegId();
+        int temp_value_idx = value_idx;
+        ret += "\t%" + std::to_string(value_idx) + " = ";
         ret += "or " + GetChildValue(landexp);
         ret += ", " + GetChildValue(lorexp) + "\n";
 
-        ret += "\t%" + std::to_string(temp_value + 1);
-        ret += " = ne %" + std::to_string(temp_value);
+        value_idx = makeTempRegId();
+        ret += "\t%" + std::to_string(value_idx);
+        ret += " = ne %" + std::to_string(temp_value_idx);
         ret += ", 0";
-
       }
       return ret;
     }
@@ -367,14 +389,14 @@ class LAndExpAST : public BaseAST {
     LAndExpType type;
     std::unique_ptr<BaseAST> eqexp;
     std::unique_ptr<BaseAST> landexp;
-    int Value() const override {
+    int Value() override {
       if (type == LAndExpType::EQEXP) {
         return eqexp->Value();
       } else {
         return std::max(eqexp->Value(), landexp->Value()) + 2;
       }
     }
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == LAndExpType::EQEXP) {
         ret += eqexp->Dump();
@@ -406,14 +428,14 @@ class EqExpAST : public BaseAST {
     EqExpType type;
     std::unique_ptr<BaseAST> eqexp;
     std::unique_ptr<BaseAST> relexp;
-    int Value() const override {
+    int Value() override {
       if (type == EqExpType::RELEXP) {
         return relexp->Value();
       } else {
         return std::max(eqexp->Value(), eqexp->Value()) + 2;
       }
     }
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == EqExpType::RELEXP) {
         ret += relexp->Dump();
@@ -440,25 +462,25 @@ class RelExpAST : public BaseAST {
     RelExpType type;
     std::unique_ptr<BaseAST> addexp;
     std::unique_ptr<BaseAST> relexp;
-    int Value() const override {
+    int Value() override {
       if (type == RelExpType::ADDEXP) {
         return addexp->Value();
       } else {
-        return std::max(addexp->Value(), relexp->Value()) + 2;
+        return value_idx;
       }
     }
-    std::string Dump() const override {
+    std::string Dump() override {
       std::string ret;
       if (type == RelExpType::ADDEXP) {
         ret += addexp->Dump();
       } else if (type == RelExpType::RELEXP_LT_ADDEXP) {
-
+        ret += DumpBinaryExp("lt", relexp, addexp);
       } else if (type == RelExpType::RELEXP_GT_ADDEXP) {
-
+        ret += DumpBinaryExp("gt", relexp, addexp);
       } else if (type == RelExpType::RELEXP_LE_ADDEXP) {
-
+        ret += DumpBinaryExp("le", relexp, addexp);
       } else if (type == RelExpType::RELEXP_GE_ADDEXP) {
-
+        ret += DumpBinaryExp("ge", relexp, addexp);
       }
       return ret;
     }
