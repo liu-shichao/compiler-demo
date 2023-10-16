@@ -1,0 +1,12 @@
+	.text
+	.globl main
+main:
+	li t0, 3
+	li t1, 4
+	slt t1, t0, t1
+	li t2, 32
+	li t3, 1
+	or t3, t2, t3
+	or t3, t3, t3
+	mv a0, t3
+	ret
