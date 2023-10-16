@@ -114,7 +114,7 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> exp;
   std::string Dump() override {
     std::string ret;
-    if (exp->Value() == -1) {
+    if (exp->IsValue()) {
       ret += "\tret ";
       ret += exp->Dump();
     } else {
@@ -208,45 +208,21 @@ class UnaryExpAST : public BaseAST {
         if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::ADD) {
           ret += unary_exp->Dump();
         } else if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::MINUS) {
-          if (unary_exp->Value() == -1) {
-
-          } else {
-            ret += unary_exp->Dump(); 
-            ret += "\n";       
-          }
-
-          ret += "\t";  
-          ret += "%" + std::to_string(Value()) + " = ";
-
-          if (unary_exp->Value() == -1) {
-            ret += "sub 0, ";
-            ret += unary_exp->Dump();
-          } else {
-            ret += "sub 0, %";
-            ret += std::to_string(unary_exp->Value());
-          }
+          ret += GetChildExp(unary_exp);
+          calcValue();
+          ret += "\t%" + std::to_string(Value()) + " = ";
+          ret += "sub 0, ";
+          ret += GetChildValue(unary_exp);
         } else if (((UnaryOpAST*)(unary_op.get()))->type== UnaryOpAST::UnaryOpType::NEGATION) {
-          if (unary_exp->Value() == -1) {
-          } else {
-            ret += unary_exp->Dump();
-            ret += "\n";
-          }
-          ret += "\t";
-          ret += "%" + std::to_string(Value()) + " = ";
-          if (unary_exp->Value() == -1) {
-            ret += "eq ";
-            ret += unary_exp->Dump();
-          } else {
-            ret += "eq %";
-            ret += std::to_string(unary_exp->Value());
-          }
+          ret += GetChildExp(unary_exp);
+          calcValue();
+          ret += "\t%" + std::to_string(Value()) + " = ";
+          ret += "eq ";
+          ret += GetChildValue(unary_exp);
           ret += ", 0";
         }
       }
       return ret;
-    }
-    bool IsValue() override {
-      return Value() == -1;
     }
     int Value() override {
       if (type == UnaryExpType::PRIMARY_EXP) {
@@ -255,7 +231,7 @@ class UnaryExpAST : public BaseAST {
         if (((UnaryOpAST*)(unary_op.get()))->type == UnaryOpAST::UnaryOpType::ADD) {
           return unary_exp->Value();
         }
-        return unary_exp->Value() + 1;
+        return value_idx;
       }
     }
 };
@@ -281,9 +257,8 @@ class MulExpAST : public BaseAST {
     int Value() override {
       if (type == MultExpType::UNARYEXP) {
         return unaryexp->Value();
-      } else {
-        return std::max(unaryexp->Value(), mulexp->Value()) + 1;
       } 
+      return value_idx;
     }
     std::string Dump() override {
       std::string ret;
@@ -313,9 +288,8 @@ class AddExpAST : public BaseAST {
     int Value() override {
       if (type == AddExpType::MULEXP) {
         return mulexp->Value();
-      } else {
-        return std::max(addexp->Value(), mulexp->Value()) + 1;
-      }
+      } 
+      return value_idx;
     }
     std::string Dump() override {
       std::string ret;
@@ -392,9 +366,8 @@ class LAndExpAST : public BaseAST {
     int Value() override {
       if (type == LAndExpType::EQEXP) {
         return eqexp->Value();
-      } else {
-        return std::max(eqexp->Value(), landexp->Value()) + 2;
-      }
+      } 
+      return value_idx;
     }
     std::string Dump() override {
       std::string ret;
@@ -404,14 +377,19 @@ class LAndExpAST : public BaseAST {
         ret += GetChildExp(eqexp);
         ret += GetChildExp(landexp);
         
-        int temp_value = std::max(eqexp->Value(), landexp->Value()) + 1;
-        ret += "%" + std::to_string(temp_value) + " = ";
+        int v1 = makeTempRegId();
+        ret += "%" + std::to_string(v1) + " = ";
         ret += "ne " + GetChildValue(eqexp) + ", 0\n";
+
+        int v2 = makeTempRegId();
+        ret += "%" + std::to_string(v2) + " = ";
         ret += "ne " + GetChildValue(landexp) + ", 0\n";
 
-        ret += "%" + std::to_string(temp_value + 1);
-        ret += " = and %" + std::to_string(temp_value);
-        ret += ", " + std::to_string(temp_value + 1);
+        
+        value_idx = makeTempRegId();
+        ret += "%" + std::to_string(value_idx) + " = ";
+        ret += " = and %" + std::to_string(v1);
+        ret += ", " + std::to_string(v2);
 
       }
       return ret;
@@ -432,7 +410,7 @@ class EqExpAST : public BaseAST {
       if (type == EqExpType::RELEXP) {
         return relexp->Value();
       } else {
-        return std::max(eqexp->Value(), eqexp->Value()) + 2;
+        return value_idx;
       }
     }
     std::string Dump() override {
@@ -440,9 +418,9 @@ class EqExpAST : public BaseAST {
       if (type == EqExpType::RELEXP) {
         ret += relexp->Dump();
       } else if (type == EqExpType::EQEXP_EQ_RELEXP) {
-
+        ret += DumpBinaryExp("eq", eqexp, relexp);
       } else if (type == EqExpType::EQEXP_NE_RELEXP) {
-
+        ret += DumpBinaryExp("ne", eqexp, relexp);
       }
       return ret;
     }
