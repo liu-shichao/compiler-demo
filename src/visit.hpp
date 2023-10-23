@@ -11,7 +11,9 @@ std::string Visit(const koopa_raw_program_t &program);
 std::string Visit(const koopa_raw_binary_t& binary);
 std::string convert_to_asm(std::string ir);
 void free_koopa_program();
-int setRegIdx(const koopa_raw_binary_t& binary, int idx);
+void setRegIdx(const koopa_raw_binary_t& binary, int idx);
 int getRegIdx(const koopa_raw_binary_t& binary);
+std::string get_op_value_str(const koopa_raw_value_t& value);
+std::string get_sub_exp_str(const koopa_raw_value_t& value);
 
 #endif
