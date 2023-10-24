@@ -112,7 +112,7 @@ std::string Visit(const koopa_raw_return_t &ret) {
   if (ret.value->name == nullptr) std::cout << "name null." << std::endl;
   std::cout << "tag: " << ret.value->ty->tag << std::endl;
   retxx += ret.value->kind.tag == KOOPA_RVT_INTEGER ? "\tli a0, " : "\tmv a0, ";
-  retxx += ret.value->kind.tag == KOOPA_RVT_INTEGER ? std::to_string(ret.value->kind.data.integer.value) : "t" + std::to_string(g_idx_t);
+  retxx += ret.value->kind.tag == KOOPA_RVT_INTEGER ? std::to_string(ret.value->kind.data.integer.value) : "t" + std::to_string(getRegIdx(ret.value->kind.data.binary));
   retxx += "\n";
   retxx += "\tret";
   return retxx;
@@ -144,359 +144,65 @@ std::string get_sub_exp_str(const koopa_raw_value_t& value, std::string str_reg_
   return ret;
 }
 
+std::string binary_op(std::string op, const koopa_raw_binary_t& binary) {
+  std::string ret;
+  std::string str_l_reg_id = get_op_value_str(binary.lhs);
+  ret += get_sub_exp_str(binary.lhs, str_l_reg_id);
+  std::string str_r_reg_id = get_op_value_str(binary.rhs);
+  ret += get_sub_exp_str(binary.rhs, str_r_reg_id);
+  // std::string str_ret_reg_id = makeOneRegIdStr();
+  ret += "\t" + op +" " + str_l_reg_id + ", " + str_l_reg_id + ", " + str_r_reg_id + "\n";
+  setRegIdx(binary, stoi(str_l_reg_id.substr(1)));
+  return ret;
+}
+
 std::string Visit(const koopa_raw_binary_t& binary) {
   std::string ret;
   std::cout << binary.op << std::endl;
   if (binary.op == KOOPA_RBO_EQ) {
-    std::cout << "KOOPA_RBO_EQ: " << std::endl;
-    std::string str_l_reg_id = get_op_value_str(binary.lhs);
-    ret += get_sub_exp_str(binary.lhs, str_l_reg_id);
-    std::string str_r_reg_id = get_op_value_str(binary.rhs);
-    ret += get_sub_exp_str(binary.rhs, str_r_reg_id);
-    std::string str_ret_reg_id = makeOneRegIdStr();
-    ret += "\txor " + str_ret_reg_id + ", " + str_l_reg_id + ", " + str_r_reg_id + "\n";
-    ret += "\tseqz " + str_ret_reg_id + ", " + str_ret_reg_id + "\n";
-    setRegIdx(binary, g_idx_t);
+    ret += binary_op("xor", binary);
+    std::string reg_id = makeRegString(getRegIdx(binary));
+    ret += "\tseqz " + reg_id + ", " + reg_id + "\n";
   } else if (binary.op == KOOPA_RBO_NOT_EQ) {
-    std::cout << "KOOPA_RBO_NOT_EQ: " << std::endl;
-    
-    std::string str_l_reg_id, str_r_reg_id;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        int reg_id = getRegIdx(binary.lhs->kind.data.binary);
-        str_l_reg_id = "t" + std::to_string(reg_id);
-    } else {
-        int ret_reg_id = makeOneRegId();
-        str_l_reg_id = "t" + std::to_string(ret_reg_id);
-        std::string str_value = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli  " + str_l_reg_id + ", " + str_value + "\n";;
-    }
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        int reg_id = getRegIdx(binary.rhs->kind.data.binary);
-        str_r_reg_id = "t" + std::to_string(reg_id);
-    } else {
-        int ret_reg_id = makeOneRegId();
-        str_r_reg_id = "t" + std::to_string(ret_reg_id);
-        std::string str_value = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli  " + str_r_reg_id + ", " + str_value + "\n";;
-    }
-
-    int ret_reg_id = makeOneRegId();
-    std::string str_ret_reg_id = "t" + std::to_string(ret_reg_id);
-
-
-    ret += "\txor " + str_ret_reg_id + ", " + str_l_reg_id + ", " + str_r_reg_id + "\n";
-    ret += "\tsnez " + str_ret_reg_id + ", " + str_ret_reg_id + "\n";
-    
-    setRegIdx(binary, g_idx_t);
+    ret += binary_op("xor", binary);
+    std::string reg_id = makeRegString(getRegIdx(binary));
+    ret += "\tsnez " + reg_id + ", " + reg_id + "\n";
   } else if (binary.op == KOOPA_RBO_SUB) {
-    std::cout << "KOOPA_RBO_SUB: " << std::endl;
-    std::string l_target_str, target_str;
-    
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::cout << "............" << std::endl;
-    std::cout << binary.lhs->kind.tag << std::endl;
-    std::cout << binary.rhs->kind.tag << std::endl;
-    setRegIdx(binary, cur_idx_t);
-
-    ret += "\tsub " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
+    ret += binary_op("sub", binary);
   } else if (binary.op == KOOPA_RBO_ADD) {
-    std::cout << "KOOPA_RBO_ADD: " << std::endl;
-    std::string l_target_str, target_str;
-    
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::cout << "............" << std::endl;
-    std::cout << binary.lhs->kind.tag << std::endl;
-    std::cout << binary.rhs->kind.tag << std::endl;
-    setRegIdx(binary, cur_idx_t);
-
-    ret += "\tadd " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
+    ret += binary_op("add", binary);
   } else if (binary.op == KOOPA_RBO_MUL) {
-    std::cout << "KOOPA_RBO_MUL: " << std::endl;
-    std::string l_target_str, target_str;
-    
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::cout << "............" << std::endl;
-    std::cout << binary.lhs->kind.tag << std::endl;
-    std::cout << binary.rhs->kind.tag << std::endl;
-    setRegIdx(binary, cur_idx_t);
-
-    ret += "\tmul " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    // 增加全局使用的寄存器编号
+    ret += binary_op("mul", binary);
   }else if (binary.op == KOOPA_RBO_DIV) {
-    std::cout << "KOOPA_RBO_MUL: " << std::endl;
-    std::string l_target_str, target_str;
-    
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::cout << "............" << std::endl;
-    std::cout << binary.lhs->kind.tag << std::endl;
-    std::cout << binary.rhs->kind.tag << std::endl;
-    setRegIdx(binary, cur_idx_t);
-
-    ret += "\tdiv " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    // 增加全局使用的寄存器编号
+    ret += binary_op("div", binary);
   }else if (binary.op == KOOPA_RBO_MOD) {
-    std::cout << "KOOPA_RBO_MUL: " << std::endl;
-    std::string l_target_str, target_str;
-    
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    std::cout << "............" << std::endl;
-    std::cout << binary.lhs->kind.tag << std::endl;
-    std::cout << binary.rhs->kind.tag << std::endl;
-    setRegIdx(binary, cur_idx_t);
-    ret += "\trem " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    // 增加全局使用的寄存器编号
+    ret += binary_op("rem", binary);
   } else if (binary.op == KOOPA_RBO_LT) {
-    std::string l_target_str, target_str;
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    ret += "\tslt " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    setRegIdx(binary, cur_idx_t);
-    // std::cout << ret << std::endl;
+    ret += binary_op("slt", binary);
   } else if (binary.op == KOOPA_RBO_GT) {
-    std::string l_target_str, target_str;
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    ret += "\tsgt " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    setRegIdx(binary, cur_idx_t);
-    // std::cout << ret << std::endl;
-  }  else if (binary.op == KOOPA_RBO_LE) {
-    std::string l_target_str, target_str;
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    ret += "\tsgt " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    ret += "\tseqz " + str_cur_idx_t + ", " + str_cur_idx_t + "\n";
-
-
+    ret += binary_op("sgt", binary);
+  } else if (binary.op == KOOPA_RBO_LE) {
+    ret += binary_op("sgt", binary);
+    std::string reg_id = makeRegString(getRegIdx(binary));
+    ret += "\tseqz " + reg_id + ", " + reg_id + "\n";
   // li    t0, 1
   // li    t1, 2
   // # 执行小于等于操作
   // sgt   t1, t0, t1
   // seqz  t1, t1
-
-
-
-
-    setRegIdx(binary, cur_idx_t);
-    // std::cout << ret << std::endl;
-  }   else if (binary.op == KOOPA_RBO_GE) {
-    std::string l_target_str, target_str;
-    int origin_idx_t = g_idx_t;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        l_target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        l_target_str = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + l_target_str + "\n";
-        l_target_str = "t" + std::to_string(g_idx_t);
-    }
-    
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        target_str = "t" + std::to_string(origin_idx_t);
-    } else {
-        g_idx_t ++;
-        target_str = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli t" + std::to_string(g_idx_t) + ", " + target_str + "\n";
-        target_str = "t" + std::to_string(g_idx_t);
-    }
-    int cur_idx_t = g_idx_t;
-    std::string str_cur_idx_t = "t" + std::to_string(cur_idx_t);
-    ret += "\tslt " + str_cur_idx_t + ", " + l_target_str + ", "  + target_str+ "\n";
-    ret += "\tseqz " + str_cur_idx_t + ", " + str_cur_idx_t + "\n";
-
-
+  } else if (binary.op == KOOPA_RBO_GE) {
+    ret += binary_op("slt", binary);
+    std::string reg_id = makeRegString(getRegIdx(binary));
+    ret += "\tseqz " + reg_id + ", " + reg_id + "\n";
   // li    t0, 1
   // li    t1, 2
   // # 执行小于等于操作
   // sgt   t1, t0, t1
   // seqz  t1, t1
-
-
-
-
-    setRegIdx(binary, cur_idx_t);
-    // std::cout << ret << std::endl;
   } else if (binary.op == KOOPA_RBO_OR) {
-    
-    std::cout << "KOOPA_RBO_NOT_EQ: " << std::endl;
-    
-    std::string str_l_reg_id, str_r_reg_id;
-    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
-        int reg_id = getRegIdx(binary.lhs->kind.data.binary);
-        str_l_reg_id = "t" + std::to_string(reg_id);
-    } else {
-        int ret_reg_id = makeOneRegId();
-        str_l_reg_id = "t" + std::to_string(ret_reg_id);
-        std::string str_value = std::to_string(binary.lhs->kind.data.integer.value);
-        ret += "\tli  " + str_l_reg_id + ", " + str_value + "\n";;
-    }
-    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
-        int reg_id = getRegIdx(binary.rhs->kind.data.binary);
-        str_r_reg_id = "t" + std::to_string(reg_id);
-    } else {
-        int ret_reg_id = makeOneRegId();
-        str_r_reg_id = "t" + std::to_string(ret_reg_id);
-        std::string str_value = std::to_string(binary.rhs->kind.data.integer.value);
-        ret += "\tli  " + str_r_reg_id + ", " + str_value + "\n";;
-    }
-
-    int ret_reg_id = makeOneRegId();
-    std::string str_ret_reg_id = "t" + std::to_string(ret_reg_id);
-
-
-    ret += "\tor " + str_ret_reg_id + ", " + str_l_reg_id + ", " + str_r_reg_id + "\n";
-    // ret += "\tseqz " + str_ret_reg_id + ", " + str_ret_reg_id + "\n";
-    
-    setRegIdx(binary, g_idx_t);
-
+    ret += binary_op("or", binary);
+  } else if (binary.op == KOOPA_RBO_AND) {
+    ret += binary_op("and", binary);
   }
   std::cout << "endl." << std::endl;
 

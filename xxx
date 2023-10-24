@@ -1,8 +1,10 @@
 	.text
 	.globl main
 main:
-	li t0, 0
-	li t1, 2
-	sub t1, t0, t1
-	mv a0, t1
+	li  t0, 0
+	li  t1, 2
+	sub t0, t0, t1
+	li  t2, 1
+	add t2, t2, t0
+	mv a0, t2
 	ret
