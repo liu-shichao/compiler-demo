@@ -1,20 +1,38 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <vector>
 #include <unordered_map>
 #include "visit.hpp"
 
 int g_idx_t = -1;
-int makeOneRegId() {
-  g_idx_t ++;
-  return g_idx_t;
+std::unordered_map<const koopa_raw_binary_t*, int> reg_id_map;
+std::vector<int> g_used_ids(7, 0);
+
+int getRegIdx(const koopa_raw_binary_t& binary) {
+  const koopa_raw_binary_t* bp = &binary;
+  if (reg_id_map.count(bp)) {
+    return reg_id_map[bp];
+  }
+  return -1;
+}
+void setRegIdx(const koopa_raw_binary_t& binary, int idx) {
+  const koopa_raw_binary_t* bp = &binary;
+  reg_id_map[bp] = idx;
+  g_used_ids[idx] = 1;
+}
+
+int makeOneRegId(std::vector<int>& used_ids) {
+  for (int i = 0; i < 7; i ++) {
+    if (!used_ids[i] && !g_used_ids[i]) {
+      used_ids[i] = 1;
+      return i;
+    }
+  }
+  return -1;
 }
 std::string makeRegString(int id) {
   return "t" + std::to_string(id);
-}
-std::string makeOneRegIdStr() {
-  int reg_id = makeOneRegId();
-  return makeRegString(reg_id);
 }
 
 // 访问 raw program
@@ -92,19 +110,6 @@ std::string Visit(const koopa_raw_basic_block_t &bb) {
   return Visit(bb->insts);
 }
 
-std::unordered_map<const koopa_raw_binary_t*, int> reg_id_map;
-
-int getRegIdx(const koopa_raw_binary_t& binary) {
-  const koopa_raw_binary_t* bp = &binary;
-  if (reg_id_map.count(bp)) {
-    return reg_id_map[bp];
-  }
-  return -1;
-}
-void setRegIdx(const koopa_raw_binary_t& binary, int idx) {
-  const koopa_raw_binary_t* bp = &binary;
-  reg_id_map[bp] = idx;
-}
 
 std::string Visit(const koopa_raw_return_t &ret) {
   std::string retxx;
@@ -124,13 +129,14 @@ std::string Visit(const koopa_raw_integer_t &integer) {
   return std::to_string(integer.value);
 }
 
-std::string get_op_value_str(const koopa_raw_value_t& value) {
+std::string get_op_value_str(const koopa_raw_value_t& value, std::vector<int>& used_ids) {
   std::string ret;
   if (value->kind.tag == KOOPA_RVT_BINARY) {
       int reg_id = getRegIdx(value->kind.data.binary);
+      g_used_ids[reg_id] = 0;
       ret = "t" + std::to_string(reg_id);
   } else {
-      int ret_reg_id = makeOneRegId();
+      int ret_reg_id = makeOneRegId(used_ids);
       ret = "t" + std::to_string(ret_reg_id);
   }
   return ret;
@@ -143,14 +149,24 @@ std::string get_sub_exp_str(const koopa_raw_value_t& value, std::string str_reg_
   ret += "\tli  " + str_reg_id + ", " + str_value + "\n";
   return ret;
 }
-
+void find_uesd_ids(const koopa_raw_binary_t& binary, std::vector<int>& used_ids) {
+    if (binary.lhs->kind.tag == KOOPA_RVT_BINARY) {
+      int reg_id = getRegIdx(binary.lhs->kind.data.binary);
+      used_ids[reg_id] = 1;
+    }
+    if (binary.rhs->kind.tag == KOOPA_RVT_BINARY) {
+      int reg_id = getRegIdx(binary.rhs->kind.data.binary);
+      used_ids[reg_id] = 1;
+    }
+}
 std::string binary_op(std::string op, const koopa_raw_binary_t& binary) {
   std::string ret;
-  std::string str_l_reg_id = get_op_value_str(binary.lhs);
+  std::vector<int> used_ids(7, 0);
+  find_uesd_ids(binary, used_ids);
+  std::string str_l_reg_id = get_op_value_str(binary.lhs, used_ids);
   ret += get_sub_exp_str(binary.lhs, str_l_reg_id);
-  std::string str_r_reg_id = get_op_value_str(binary.rhs);
+  std::string str_r_reg_id = get_op_value_str(binary.rhs, used_ids);
   ret += get_sub_exp_str(binary.rhs, str_r_reg_id);
-  // std::string str_ret_reg_id = makeOneRegIdStr();
   ret += "\t" + op +" " + str_l_reg_id + ", " + str_l_reg_id + ", " + str_r_reg_id + "\n";
   setRegIdx(binary, stoi(str_l_reg_id.substr(1)));
   return ret;
