@@ -41,7 +41,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp UnaryExp PrimaryExp UnaryOp AddExp MulExp LOrExp LAndExp EqExp RelExp BlockItems BlockItem Decl ConstDecl ConstDefs ConstInitVal ConstExp
+%type <ast_val> FuncDef FuncType Block Stmt Exp UnaryExp PrimaryExp UnaryOp AddExp MulExp LOrExp LAndExp EqExp RelExp BlockItems BlockItem Decl ConstDecl ConstDefs ConstDef ConstInitVal ConstExp  LVal
 %type <int_val> Number
 
 %%
@@ -75,37 +75,54 @@ FuncType
 Block
   : '{' BlockItems '}' {
     auto ast = new BlockAST();
-    // ast->stmt = unique_ptr<BaseAST>($2);
+    ast->block_items = std::unique_ptr<BaseAST>($2);
+    std::cout << "block: " << ast->Dump() << std::endl;
     $$ = ast;
   }
   ;
 
 BlockItems
   : BlockItem {
-    std::cout << "BlockItem" << std::endl;
+    auto ast = new BlockItemsAST();
+    ast->block_items.push_back(std::unique_ptr<BaseAST>($1));
+    $$ = ast;
   }
   | BlockItems BlockItem {
-
+    auto ast = new BlockItemsAST();
+    ast->block_items = std::move(((BlockItemsAST*)$1)->block_items);
+    ast->block_items.push_back(std::unique_ptr<BaseAST>($2));
+    $$ = ast;
   }
   ;
 
 BlockItem
   : Decl {
-
+    BlockItemAST* ast = new BlockItemAST();
+    ast->type = BlockItemAST::BlockItemType::DECL;
+    ast->decl = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   | Stmt {
-
+    BlockItemAST* ast = new BlockItemAST();
+    ast->type = BlockItemAST::BlockItemType::STMT;
+    ast->stmt = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   ;
 
 Decl
   : ConstDecl {
-
+    auto ast = new DeclAST();
+    ast->const_decl = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   ;
 
 ConstDecl
   : CONST BType ConstDefs ';' {
+    auto ast = new ConstDeclAST();
+    ast->const_defs = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
   }
   ;
 
@@ -117,29 +134,41 @@ BType
 
 ConstDefs
   : ConstDef {
-
+    auto ast = new ConstDefsAST();
+    ast->const_defs.push_back(std::unique_ptr<BaseAST>($1));
+    $$ = ast;
   }
   | ConstDefs ',' ConstDef {
-
+    auto ast = new ConstDefsAST();
+    ast->const_defs = std::move(((ConstDefsAST*)$1)->const_defs);
+    ast->const_defs.push_back(std::unique_ptr<BaseAST>($3));
+    $$ = ast;
   }
   ;
 
 ConstDef
   : IDENT '=' ConstInitVal {
-    std::cout << "int " << * ($1) << " = " << $3 << std::endl;
+    auto ast = new ConstDefAST();
+    ast->indent = *($1);
+    ast->const_init_val = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
   }
   ;
 
 ConstInitVal
   : ConstExp {
-
+    auto ast = new ConstInitValAST();
+    ast->const_exp = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   ;
 
 
 ConstExp
   : Exp {
-
+    auto ast = new ConstExpAST();
+    ast->exp = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   ;
 
@@ -308,14 +337,12 @@ MulExp
 
 UnaryExp
   : PrimaryExp {
-      // std::cout << "(PrimaryExp): " << *(yylval.str_val) << std::endl;
       auto ast = new UnaryExpAST();
       ast->primary_exp = unique_ptr<BaseAST>($1);
       ast->type = UnaryExpAST::UnaryExpType::PRIMARY_EXP;
       $$ = ast;
   }
   | UnaryOp UnaryExp {
-      // std::cout << "UnaryOp UnaryExp: " << *(yylval.str_val) << std::endl;
       auto ast = new UnaryExpAST();
       ast->type = UnaryExpAST::UnaryExpType::UNARYOP_UNARYEXP;
       ast->unary_op = unique_ptr<BaseAST>($1);
@@ -326,27 +353,30 @@ UnaryExp
 
 PrimaryExp
   : '('Exp')' {
-    // std::cout << "(Exp): " << *(yylval.str_val) << std::endl;
     auto ast = new PrimaryExpAST();
     ast->type = PrimaryExpAST::PrimaryExpType::EXP;
     ast->exp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   | LVal {
-
+    auto ast = new PrimaryExpAST();
+    ast->type = PrimaryExpAST::PrimaryExpType::LVAL;
+    ast->lval = unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   | Number {
     auto ast = new PrimaryExpAST();
     ast->type = PrimaryExpAST::PrimaryExpType::NUMBER;
     ast->number = $1;
-    std::cout << $1 << std::endl;
     $$ = ast;
   }
   ;
 
 LVal
   : IDENT {
-    std::cout << *($1) << std::endl;
+    auto ast = new LValAST();
+    ast->ident = *($1);
+    $$ = ast;
   }
   ;
 

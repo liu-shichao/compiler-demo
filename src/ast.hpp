@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <iostream>
+#include <vector>
 
 class UnaryOpAST;
 
@@ -101,10 +102,107 @@ class FuncTypeAST : public BaseAST {
 
 class BlockAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> stmt;
+  std::unique_ptr<BaseAST> block_items;
   std::string Dump() override {
     std::string ret = "%entry:             // 入口基本块\n";
-    ret += stmt->Dump();
+    ret += block_items->Dump();
+    return ret;
+  }
+};
+
+class BlockItemsAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> block_items;
+  std::string Dump() override {
+    std::string ret;
+    for (auto& block_item : block_items) {
+      ret += block_item->Dump();
+    }
+    return ret;
+  }
+};
+
+class BlockItemAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> decl;
+  std::unique_ptr<BaseAST> stmt;
+  enum class BlockItemType {
+    DECL,
+    STMT
+  };
+  BlockItemType type;
+  std::string Dump() override {
+    std::string ret;
+    if (type == BlockItemType::DECL) {
+      ret += decl->Dump();
+    } else {
+      ret += stmt->Dump();
+    }
+    return ret;
+  }
+};
+
+class DeclAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> const_decl;
+  std::string Dump() override {
+    std::string ret;
+    ret += const_decl->Dump();
+    return ret;
+  }
+};
+
+class ConstDeclAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> const_defs;
+  std::string Dump() override {
+    std::string ret;
+    ret += const_defs->Dump();
+    return ret;
+  }
+};
+
+class ConstDefsAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> const_defs;
+  std::string Dump() override {
+    std::string ret;
+    for (auto& const_def : const_defs) {
+      ret += const_def->Dump();
+    }
+    return ret;
+  }
+};
+
+class ConstDefAST : public BaseAST {
+ public:
+  std::string indent;
+  std::unique_ptr<BaseAST> const_init_val;
+  std::string Dump() override {
+    std::string ret;
+    ret += indent;
+    ret += " = ";
+    ret += const_init_val->Dump();
+    return ret;
+  }
+};
+
+class ConstInitValAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> const_exp;
+  std::string Dump() override {
+    std::string ret;
+    ret += const_exp->Dump();
+    return ret;
+  }
+};
+
+class ConstExpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> exp;
+  std::string Dump() override {
+    std::string ret;
+    ret += exp->Dump();
     return ret;
   }
 };
@@ -166,15 +264,19 @@ class PrimaryExpAST : public BaseAST {
   public:
     enum class PrimaryExpType {
       EXP,
+      LVAL,
       NUMBER
     };
     PrimaryExpType type;
     std::unique_ptr<BaseAST> exp;
+    std::unique_ptr<BaseAST> lval;
     int number;
     std::string Dump() override {
       std::string ret;
       if (type == PrimaryExpType::EXP) {
         ret += exp->Dump();
+      } else if (type == PrimaryExpType::LVAL) {
+        ret += lval->Dump();
       } else if (type == PrimaryExpType::NUMBER) {
         ret += std::to_string(number);
       }
@@ -183,9 +285,19 @@ class PrimaryExpAST : public BaseAST {
     int Value() override {
       if (type == PrimaryExpType::EXP) {
         return exp->Value();
+      } else if (type == PrimaryExpType::LVAL) {
+        return lval->Value();
       } else if (type == PrimaryExpType::NUMBER) {
         return -1;
       }
+    }
+};
+
+class LValAST : public BaseAST {
+  public:
+    std::string ident;
+    std::string Dump() override {
+      return ident;
     }
 };
 
