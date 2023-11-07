@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include "visit.hpp"
 
-int g_idx_t = -1;
 std::unordered_map<const koopa_raw_binary_t*, int> reg_id_map;
 std::vector<int> g_used_ids(7, 0);
 

@@ -14,10 +14,7 @@
 // 声明 lexer 函数和错误处理函数
 int yylex();
 void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
-
 using namespace std;
-
-int idx = 0;
 
 %}
 
@@ -268,7 +265,6 @@ PrimaryExp
   : '('Exp')' {
     // std::cout << "(Exp): " << *(yylval.str_val) << std::endl;
     auto ast = new PrimaryExpAST();
-    ast->idx = ++idx;
     ast->type = PrimaryExpAST::PrimaryExpType::EXP;
     ast->exp = unique_ptr<BaseAST>($2);
     $$ = ast;

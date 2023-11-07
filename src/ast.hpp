@@ -169,7 +169,6 @@ class PrimaryExpAST : public BaseAST {
       NUMBER
     };
     PrimaryExpType type;
-    int idx;
     std::unique_ptr<BaseAST> exp;
     int number;
     std::string Dump() override {
