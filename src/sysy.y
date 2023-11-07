@@ -76,7 +76,7 @@ Block
   : '{' BlockItems '}' {
     auto ast = new BlockAST();
     ast->block_items = std::unique_ptr<BaseAST>($2);
-    std::cout << "block: " << ast->Dump() << std::endl;
+    // std::cout << "block: " << ast->Dump() << std::endl;
     $$ = ast;
   }
   ;
@@ -151,6 +151,7 @@ ConstDef
     auto ast = new ConstDefAST();
     ast->indent = *($1);
     ast->const_init_val = std::unique_ptr<BaseAST>($3);
+    ast->saveSymbol();
     $$ = ast;
   }
   ;
@@ -183,7 +184,7 @@ Stmt
 Exp
   : LOrExp {
       auto ast = new ExpAST();
-      ast->unary_exp = unique_ptr<BaseAST>($1);
+      ast->lor_exp = unique_ptr<BaseAST>($1);
       $$ = ast;
   }
   ;
